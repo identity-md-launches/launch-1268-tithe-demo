@@ -20,6 +20,7 @@ contract RejectingRecipient {
     }
 }
 
+/// forge-config: default.fuzz.runs = 1000
 contract TitheDemoTest is Test {
     uint256 internal constant SUPPLY = 1_000_000_000_000_000_000_000_000_000;
 
@@ -359,11 +360,15 @@ contract TitheDemoTest is Test {
     }
 
     function testFuzz_TransferConservesSupply(address recipient, uint256 rawAmount) public {
-        vm.assume(recipient != address(0) && recipient != address(this));
+        recipient = address(uint160(bound(uint160(recipient), 1, type(uint160).max)));
         uint256 amount = bound(rawAmount, 0, SUPPLY);
         assertTrue(token.transfer(recipient, amount));
-        assertEq(token.balanceOf(recipient), amount);
-        assertEq(token.balanceOf(address(this)), SUPPLY - amount);
+        if (recipient == address(this)) {
+            assertEq(token.balanceOf(address(this)), SUPPLY);
+        } else {
+            assertEq(token.balanceOf(recipient), amount);
+            assertEq(token.balanceOf(address(this)), SUPPLY - amount);
+        }
         assertEq(token.totalSupply(), SUPPLY);
     }
 
